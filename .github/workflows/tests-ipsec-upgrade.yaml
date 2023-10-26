@@ -75,8 +75,11 @@ jobs:
       fail-fast: false
       max-parallel: 16
       matrix:
+        config: ['5.4', '5.10', 'bpf-next']
+        mode: ['minor', 'patch']
         include:
-          - name: '1'
+          # Define three config sets
+          - config: '5.4'
             # renovate: datasource=docker depName=quay.io/lvh-images/kind
             kernel: '5.4-20231026.065108'
             kube-proxy: 'iptables'
@@ -84,7 +87,7 @@ jobs:
             tunnel: 'disabled'
             encryption: 'ipsec'
 
-          - name: '2'
+          - config: '5.10'
             # renovate: datasource=docker depName=quay.io/lvh-images/kind
             kernel: '5.10-20231026.065108'
             kube-proxy: 'iptables'
@@ -93,7 +96,7 @@ jobs:
             encryption: 'ipsec'
             endpoint-routes: 'true'
 
-          - name: '3'
+          - config: 'bpf-next'
             # We don't want to update bpf-next after branching
             kernel: 'bpf-next-20230420.212204'
             kube-proxy: 'iptables'
@@ -101,6 +104,31 @@ jobs:
             tunnel: 'vxlan'
             encryption: 'ipsec'
             endpoint-routes: 'true'
+
+          # Add names to matrix combinations of {config, mode}
+          - config: '5.4'
+            mode: 'minor'
+            name: '1'
+
+          - config: '5.10'
+            mode: 'minor'
+            name: '2'
+
+          - config: 'bpf-next'
+            mode: 'minor'
+            name: '3'
+
+          - config: '5.4'
+            mode: 'patch'
+            name: '4'
+
+          - config: '5.10'
+            mode: 'patch'
+            name: '5'
+
+          - config: 'bpf-next'
+            mode: 'patch'
+            name: '6'
 
     timeout-minutes: 60
     steps:
@@ -123,7 +151,11 @@ jobs:
           fi
 
           echo sha=${SHA} >> $GITHUB_OUTPUT
-          CILIUM_DOWNGRADE_VERSION=$(contrib/scripts/print-downgrade-version.sh)
+          if [ "${{ matrix.mode }}" = "minor" ]; then
+            CILIUM_DOWNGRADE_VERSION=$(contrib/scripts/print-downgrade-version.sh)
+          else
+            CILIUM_DOWNGRADE_VERSION=$(contrib/scripts/print-downgrade-version.sh patch || true)
+          fi
           echo downgrade_version=${CILIUM_DOWNGRADE_VERSION} >> $GITHUB_OUTPUT
 
       - name: Derive stable Cilium installation config
