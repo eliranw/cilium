@@ -4,6 +4,9 @@ inputs:
   image-tag:
     description: 'SHA or tag'
     required: true
+  operator-image-tag:
+    description: 'SHA or tag (operator image, defaults to image-tag if empty)'
+    required: false
   chart-dir:
     description: 'Path to Cilium charts directory'
     required: true
@@ -56,6 +59,10 @@ runs:
     - shell: bash
       id: derive-config
       run: |
+        operator_image_tag="${{ inputs.operator-image-tag }}"
+        if [[ -z "${operator_image_tag}" ]]; then
+          operator_image_tag="${{ inputs.image-tag }}"
+        fi
         DEFAULTS="--wait \
             --chart-directory=${{ inputs.chart-dir }} \
             --helm-set=image.repository=quay.io/${{ env.QUAY_ORGANIZATION_DEV }}/cilium-ci \
@@ -65,7 +72,7 @@ runs:
             --helm-set=debug.verbose=envoy \
             --helm-set=operator.image.repository=quay.io/${{ env.QUAY_ORGANIZATION_DEV }}/operator \
             --helm-set=operator.image.suffix=-ci \
-            --helm-set=operator.image.tag=${{ inputs.image-tag }} \
+            --helm-set=operator.image.tag=${operator_image_tag} \
             --helm-set=operator.image.useDigest=false \
             --helm-set=hubble.relay.image.repository=quay.io/${{ env.QUAY_ORGANIZATION_DEV }}/hubble-relay-ci \
             --helm-set=hubble.relay.image.tag=${{ inputs.image-tag }} \

@@ -153,10 +153,13 @@ jobs:
           echo sha=${SHA} >> $GITHUB_OUTPUT
           if [ "${{ matrix.mode }}" = "minor" ]; then
             CILIUM_DOWNGRADE_VERSION=$(contrib/scripts/print-downgrade-version.sh)
+            CILIUM_DOWNGRADE_BRANCH="${CILIUM_DOWNGRADE_VERSION}"
           else
             CILIUM_DOWNGRADE_VERSION=$(contrib/scripts/print-downgrade-version.sh patch || true)
+            CILIUM_DOWNGRADE_BRANCH="${CILIUM_DOWNGRADE_VERSION%.*}"
           fi
           echo downgrade_version=${CILIUM_DOWNGRADE_VERSION} >> $GITHUB_OUTPUT
+          echo downgrade_version_branch=${CILIUM_DOWNGRADE_BRANCH} >> $GITHUB_OUTPUT
 
       - name: Derive stable Cilium installation config
         id: cilium-stable-config
@@ -164,6 +167,7 @@ jobs:
         uses: ./.github/actions/cilium-config
         with:
           image-tag: ${{ steps.vars.outputs.downgrade_version }}
+          operator-image-tag: ${{ steps.vars.outputs.downgrade_version_branch }}
           chart-dir: './cilium-${{ steps.vars.outputs.downgrade_version }}/install/kubernetes/cilium/'
           tunnel: ${{ matrix.tunnel }}
           endpoint-routes: ${{ matrix.endpoint-routes }}
