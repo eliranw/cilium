@@ -154,12 +154,15 @@ jobs:
           if [ "${{ matrix.mode }}" = "minor" ]; then
             CILIUM_DOWNGRADE_VERSION=$(contrib/scripts/print-downgrade-version.sh)
             CILIUM_DOWNGRADE_BRANCH="${CILIUM_DOWNGRADE_VERSION}"
+            CILIUM_IMAGE_SUFFIX="-ci"
           else
             CILIUM_DOWNGRADE_VERSION=$(contrib/scripts/print-downgrade-version.sh patch || true)
             CILIUM_DOWNGRADE_BRANCH="${CILIUM_DOWNGRADE_VERSION%.*}"
+            CILIUM_IMAGE_SUFFIX=""
           fi
           echo downgrade_version=${CILIUM_DOWNGRADE_VERSION} >> $GITHUB_OUTPUT
           echo downgrade_version_branch=${CILIUM_DOWNGRADE_BRANCH} >> $GITHUB_OUTPUT
+          echo image_suffix=${CILIUM_IMAGE_SUFFIX} >> $GITHUB_OUTPUT
 
       - name: Derive stable Cilium installation config
         id: cilium-stable-config
@@ -168,6 +171,7 @@ jobs:
         with:
           image-tag: ${{ steps.vars.outputs.downgrade_version }}
           operator-image-tag: ${{ steps.vars.outputs.downgrade_version_branch }}
+          image-suffix: ${{ steps.vars.outputs.image_suffix }}
           chart-dir: './cilium-${{ steps.vars.outputs.downgrade_version }}/install/kubernetes/cilium/'
           tunnel: ${{ matrix.tunnel }}
           endpoint-routes: ${{ matrix.endpoint-routes }}
@@ -263,7 +267,7 @@ jobs:
             mkdir -p cilium-junits
 
       - name: Wait for images to be available
-        if: ${{ steps.vars.outputs.downgrade_version != '' }}
+        if: ${{ matrix.mode != 'patch' }}
         timeout-minutes: 30
         shell: bash
         run: |
