@@ -242,7 +242,7 @@ func (key *PolicyKey) PortProtoString() string {
 		return protoStr
 	case prefixLen > NexthdrBits && prefixLen < FullPrefixBits:
 		// Protocol specified, partially wildcarded port
-		return fmt.Sprintf("0x%x/%d/%s", dport, prefixLen-NexthdrBits, protoStr)
+		return fmt.Sprintf("%d-%d/%s", dport, dport+fillUint16(uint8(prefixLen-NexthdrBits)), protoStr)
 	case prefixLen == FullPrefixBits:
 		// Both protocol and port specified, nothing wildcarded
 		return fmt.Sprintf("%d/%s", dport, protoStr)
@@ -250,6 +250,14 @@ func (key *PolicyKey) PortProtoString() string {
 		// Invalid prefix length
 		return fmt.Sprintf("<INVALID PREFIX LENGTH: %d>", prefixLen)
 	}
+}
+
+func fillUint16(v uint8) uint16 {
+	var r uint16
+	for i := uint8(0); i < v; i++ {
+		r |= 1 << (15 - i)
+	}
+	return ^r
 }
 
 func (key *PolicyKey) String() string {
@@ -266,11 +274,9 @@ func NewKey(id uint32, dport, mask uint16, proto uint8, trafficDirection uint8) 
 	// For now prefix length is derived from the proto and dport values
 	// This will have to be exposed to the caller when port ranges are supported.
 	prefixLen := StaticPrefixBits
-	if proto != 0 {
-		prefixLen += NexthdrBits
-		if dport != 0 {
-			prefixLen += DestPortBits - uint32(bits.TrailingZeros16(mask))
-		}
+	prefixLen += NexthdrBits
+	if dport != 0 {
+		prefixLen += DestPortBits - uint32(bits.TrailingZeros16(mask))
 	}
 	return PolicyKey{
 		Prefixlen:        prefixLen,
